@@ -3,20 +3,23 @@ import os
 import time
 import random
 
+from typing import Tuple, List
+
 pygame.font.init()
 
-WIDTH, HEIGHT = 1280, 960
-TILE_SIZE = (int(WIDTH / 20), int(WIDTH / 20))
+WIDTH: int = 1280
+HEIGHT: int = 960
+TILE_SIZE: Tuple[int, int] = (int(WIDTH / 20), int(WIDTH / 20))
 
-WIN = pygame.display.set_mode((WIDTH, HEIGHT))
+WIN: pygame.Surface = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Cookies for Cletus")
 
 
 # Load images
-CLETUS = pygame.transform.scale(
+CLETUS: pygame.Surface = pygame.transform.scale(
     pygame.image.load(os.path.join("assets", "cletus_walk_01.png")), TILE_SIZE
 )
-CLETUS_WALK_ANIMATION = [
+CLETUS_WALK_ANIMATION: List[pygame.Surface] = [
     pygame.transform.scale(
         pygame.image.load(os.path.join("assets", "cletus_walk_01.png")), TILE_SIZE
     ),
@@ -24,10 +27,16 @@ CLETUS_WALK_ANIMATION = [
         pygame.image.load(os.path.join("assets", "cletus_walk_02.png")), TILE_SIZE
     ),
 ]
-HIPPIE = pygame.transform.scale(
+CLETUS_SHOT_ANIMATION: List[pygame.Surface] = [
+    pygame.transform.scale(
+        pygame.image.load(os.path.join("assets", "cletus_shoot.png")), TILE_SIZE
+    ),
+    CLETUS,
+]
+HIPPIE: pygame.Surface = pygame.transform.scale(
     pygame.image.load(os.path.join("assets", "hippie.png")), TILE_SIZE
 )
-HIPPIE_WALK_ANIMATION = [
+HIPPIE_WALK_ANIMATION: List[pygame.Surface] = [
     pygame.transform.scale(
         pygame.image.load(os.path.join("assets", "hippie_walk_01.png")), TILE_SIZE
     ),
@@ -35,87 +44,91 @@ HIPPIE_WALK_ANIMATION = [
         pygame.image.load(os.path.join("assets", "hippie_walk_02.png")), TILE_SIZE
     ),
 ]
-COOKIE = pygame.transform.scale(
+COOKIE: pygame.Surface = pygame.transform.scale(
     pygame.image.load(os.path.join("assets", "cookie.png")), TILE_SIZE
 )
-BULLET = pygame.transform.scale(
+BULLET: pygame.Surface = pygame.transform.scale(
     pygame.image.load(os.path.join("assets", "bullet.png")), TILE_SIZE
 )
 
 # Background
-BG = pygame.transform.scale(
+BG: pygame.Surface = pygame.transform.scale(
     pygame.image.load(os.path.join("assets", "background.png")), (WIDTH, HEIGHT)
 )
 
 
-TOP_MARGIN = 2 * CLETUS.get_height()
-BOTTOM_MARGIN = CLETUS.get_height()
+TOP_MARGIN: int = 2 * CLETUS.get_height()
+BOTTOM_MARGIN: int = CLETUS.get_height()
 
 
-class Projectile:
-    def __init__(self, x, y, image):
+class Drawable:
+    def __init__(self, x: int, y: int, image: pygame.Surface):
         self.x = x
         self.y = y
         self.image = image
-        self.mask = pygame.mask.from_surface(self.image)
+        self.mask: pygame.Mask = pygame.mask.from_surface(self.image)
 
-    def move(self, xy):
+    def draw(self, window) -> None:
+        window.blit(self.image, (self.x, self.y))
+
+
+class Projectile(Drawable):
+    def __init__(self, x: int, y: int, image: pygame.Surface):
+        super().__init__(x, y, image)
+
+    def move(self, xy: Tuple[int, int]) -> None:
         x, y = xy
         self.x += x
         self.y += y
 
-    def draw(self, window):
-        window.blit(self.image, (self.x, self.y))
-
-    def collision(self, other):
+    def collision(self, other) -> bool:
         return collide(self, other)
 
 
-class Cookie:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.image = COOKIE
+class Cookie(Drawable):
+    def __init__(self, x: int, y: int):
+        super().__init__(x, y, COOKIE)
         self.point_value = -10
-        self.mask = pygame.mask.from_surface(self.image)
 
-    def move(self, velocity):
+    def move(self, velocity: Tuple[int, int]) -> None:
         x, y = velocity
         self.x += x
         self.y += y
 
-    def draw(self, window):
-        window.blit(self.image, (self.x, self.y))
-
-    def get_points(self, level):
+    def get_points(self, level: int) -> int:
         return self.point_value * level
 
-    def collision(self, other):
+    def collision(self, other) -> bool:
         return collide(self, other)
 
 
-class Entity:
+class Entity(Drawable):
     COOLDOWN = 15
 
-    def __init__(self, x, y, image, walk_animation, shot_image, points):
-        self.x = x
-        self.y = y
-        self.walk_count = 0
-        self.shots = []
-        self.image = image
+    def __init__(
+        self,
+        x: int,
+        y: int,
+        image: pygame.Surface,
+        walk_animation: List[pygame.Surface],
+        shot_image: pygame.Surface,
+        points: int,
+    ):
+        super().__init__(x, y, image)
+        self.walk_count: int = 0
+        self.shots: List[Projectile] = []
         self.walk_animation = walk_animation
         self.shot_image = shot_image
-        self.mask = pygame.mask.from_surface(self.image)
-        self.cooldown_counter = 0
+        self.cooldown_counter: int = 0
         self.point_value = points
 
-    def cooldown(self):
+    def cooldown(self) -> None:
         if self.cooldown_counter >= self.COOLDOWN:
             self.cooldown_counter = 0
         elif self.cooldown_counter > 0:
             self.cooldown_counter += 1
 
-    def draw(self, window):
+    def draw(self, window: pygame.Surface) -> None:
         if len(self.walk_animation) > 1:
             if self.walk_count + 1 >= 10:
                 self.walk_count = 0
@@ -123,17 +136,18 @@ class Entity:
             else:
                 window.blit(self.walk_animation[self.walk_count // 5], (self.x, self.y))
         else:
-            window.blit(self.image, (self.x, self.y))
+            super().draw(window)
 
         for shot in self.shots:
             shot.draw(window)
 
-    def shoot(self):
+    def shoot(self) -> None:
         if self.cooldown_counter == 0:
+            self.is_shooting = True
             self.shots.append(Projectile(self.x, self.y, self.shot_image))
             self.cooldown_counter = 1
 
-    def get_points(self, level):
+    def get_points(self, level: int) -> int:
         return self.point_value * level
 
 
@@ -147,9 +161,10 @@ class Hippie(Entity):
 
 
 class Player(Entity):
-    def __init__(self, shot_vel):
+    def __init__(self, shot_vel: Tuple[int, int]):
         self.shot_vel = shot_vel
-        self.score = 0
+        self.is_shooting: bool = False
+        self.score: int = 0
         super().__init__(
             5,
             HEIGHT / 2 - CLETUS.get_height() / 2,
@@ -159,7 +174,14 @@ class Player(Entity):
             0,
         )
 
-    def move_shots(self, hippies, cookies, level):
+    def draw(self, window):
+        if self.is_shooting:
+            window.blit(CLETUS_SHOT_ANIMATION[0], (self.x, self.y))
+            self.is_shooting = False
+        else:
+            super().draw(window)
+
+    def move_shots(self, hippies: List[Hippie], cookies: List[Cookie], level: int):
         for shot in self.shots:
             shot.move(self.shot_vel)
             if shot.x >= WIDTH:
@@ -176,39 +198,39 @@ class Player(Entity):
                             self.shots.remove(shot)
 
 
-def collide(obj1, obj2):
-    offset_x = int(obj2.x - obj1.x)
-    offset_y = int(obj2.y - obj1.y)
+def collide(obj1: Drawable, obj2: Drawable) -> bool:
+    offset_x: int = int(obj2.x - obj1.x)
+    offset_y: int = int(obj2.y - obj1.y)
     # overlap returns a tuple with the coordinates where the objects overlap
     return obj1.mask.overlap(obj2.mask, (offset_x, offset_y)) != None
 
 
 def main():
-    run = True
-    FPS = 30
+    run: bool = True
+    FPS: int = 30
 
-    lives = 3
-    level = 0
-    score = 0
-    cookie_delay = 1000
+    lives: int = 3
+    level: int = 0
+    score: int = 0
+    cookie_delay: int = 1000
     COOKIE_EVENT = pygame.USEREVENT + 0
     pygame.time.set_timer(COOKIE_EVENT, cookie_delay)
 
-    lost = False
-    lost_count = 0
+    lost: bool = False
+    lost_count: int = 0
 
     main_font = pygame.font.SysFont("monospace", 40)
     lost_font = pygame.font.SysFont("monospace", 100)
 
-    player_shot_vel = (5, 0)
+    player_shot_vel: Tuple[int, int] = (5, 0)
     player = Player(player_shot_vel)
-    player_vel = 7
+    player_vel: int = 7
 
-    wave_length = 5
-    hippie_vel = 1
-    hippies = []
-    cookie_vel = (-2, 0)
-    cookies = []
+    wave_length: int = 5
+    hippie_vel: int = 1
+    hippies: List[Hippie] = []
+    cookie_vel: Tuple[int, int] = (-2, 0)
+    cookies: List[Cookie] = []
 
     clock = pygame.time.Clock()
 
