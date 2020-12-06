@@ -11,8 +11,11 @@ but be careful not to shoot them, as you loose points doing so
 
 
 ### How
-- Create a virtual environment to keep dependencies local to the project
-  (optional). `python3 -m venv cletusenv`. Activate the environment. `source
-  cletusenv/bin/activate`.
-- Install dependencies. `pip install -r requirements.txt`.
+- (Optional) Create a virtual environment `python3 -m venv cletusenv`. 
+  Activate the environment `source cletusenv/bin/activate`. This step is
+  optional, but recommended to keep dependencies local to the project.
+- Install dependencies `pip install -r requirements.txt`.
 - Run the game `python main.py`.
+
+If you skipped the virtual environment chances are you'll have to substitube
+`python` for `python3` and `pip` for `pip3` in the commands above.
