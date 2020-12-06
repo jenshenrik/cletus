@@ -275,7 +275,6 @@ def main():
                 run = False
             elif event.type == COOKIE_EVENT:
                 if random.randint(1, 100) <= 10:
-                    print("spawning cookie")
                     cookies.append(
                         Cookie(
                             random.randrange(WIDTH + 50, WIDTH + 500),
